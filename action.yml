@@ -1,36 +1,40 @@
-name: "Upload to Dropbox"
-description: "Upload files to Dropbox"
-author: "Deka"
+name: 'Upload to Dropbox'
+description: 'Upload files to Dropbox'
+author: 'Deka'
 branding:
   icon: upload-cloud
   color: blue
 inputs:
   dropbox_access_token:
     required: true
-    description: "Dropbox access token"
+    description: 'Dropbox access token'
+  use_root_namespace:
+    required: false
+    default: 'false'
+    description: 'Use root namespace. default: false'
   src:
     required: true
     description: "File to upload to Dropbox. e.g. 'file.txt', '**/*.txt'"
   dest:
     required: false
-    default: "/"
+    default: '/'
     description: "Destination path for upload. e.g. '/file.txt', '/dest/'"
   multiple:
     required: false
-    default: "false"
-    description: "Upload multiple files by glob. default: false"
+    default: 'false'
+    description: 'Upload multiple files by glob. default: false'
   mode:
     required: false
-    default: "add"
-    description: "What to do if the file already exists [add, overwrite]. default: add"
+    default: 'add'
+    description: 'What to do if the file already exists [add, overwrite]. default: add'
   autorename:
     required: false
-    default: "false"
+    default: 'false'
     description: "If there's a conflict, as determined by mode, have the Dropbox server try to autorename the file to avoid conflict. default: false"
   mute:
     required: false
-    default: "false"
+    default: 'false'
     description: "If true, this tells the clients that this modification shouldn't result in a user notification. default: false"
 runs:
-  using: "node12"
-  main: "dist/index.js"
+  using: 'node18'
+  main: 'dist/index.js'

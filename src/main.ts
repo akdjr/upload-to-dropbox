@@ -1,4 +1,4 @@
-import globby from 'globby'
+import { globby } from 'globby'
 import * as core from '@actions/core'
 import * as fs from 'fs'
 import { join, basename } from 'path'
@@ -15,9 +15,11 @@ const mode = core.getInput('mode')
 const autorename = asBoolean(core.getInput('autorename'))
 const mute = asBoolean(core.getInput('mute'))
 
+const useRootNamespace = asBoolean(core.getInput('use_root_namespace'))
+
 async function run() {
   try {
-    const { upload } = makeUpload(accessToken)
+    const { upload } = await makeUpload(accessToken, useRootNamespace)
 
     if (!multiple) {
       const contents = await fs.promises.readFile(src)
@@ -44,7 +46,7 @@ async function run() {
     if (error instanceof DropboxResponseError) {
       core.error(error.error)
     }
-    core.setFailed(error)
+    core.setFailed(error as Error)
   }
 }
 

@@ -1,9 +1,10 @@
 import { Dropbox, files } from 'dropbox'
 import fetch from 'node-fetch'
 
-export function makeUpload(
-  accessToken: string
-): {
+export async function makeUpload(
+  accessToken: string,
+  useRootNamespace: boolean
+): Promise<{
   upload: (
     path: string,
     contents: Buffer,
@@ -13,8 +14,23 @@ export function makeUpload(
       mute: boolean
     }
   ) => Promise<void>
-} {
-  const dropbox = new Dropbox({ accessToken, fetch })
+}> {
+  let dropbox = new Dropbox({ accessToken, fetch })
+
+  if (useRootNamespace) {
+    const account = await dropbox.usersGetCurrentAccount()
+
+    if (
+      account.result.root_info.home_namespace_id !==
+      account.result.root_info.root_namespace_id
+    ) {
+      dropbox = new Dropbox({
+        accessToken,
+        fetch,
+        pathRoot: `{".tag": "root", "root": "${account.result.root_info.root_namespace_id}"}`,
+      })
+    }
+  }
 
   return {
     upload: async (path, contents, options) => {
