@@ -1,6 +1,6 @@
 name: 'Upload to Dropbox'
 description: 'Upload files to Dropbox'
-author: 'Deka'
+author: 'Akshay Dhalwala (forked from Deka)'
 branding:
   icon: upload-cloud
   color: blue
@@ -11,7 +11,7 @@ inputs:
   use_root_namespace:
     required: false
     default: 'false'
-    description: 'Use root namespace. default: false'
+    description: 'Use root namespace when working with Dropbox Teams. default: false'
   src:
     required: true
     description: "File to upload to Dropbox. e.g. 'file.txt', '**/*.txt'"

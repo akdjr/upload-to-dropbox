@@ -1,8 +1,8 @@
 {
-  "name": "upload-to-dropbox",
-  "version": "3.0.0",
+  "name": "myxie-upload-to-dropbox",
+  "version": "1.0.0",
   "private": true,
-  "description": "Upload files to Dropbox action",
+  "description": "Upload files to Dropbox action (forked from upload-to-dropbox)",
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
@@ -23,9 +23,10 @@
   },
   "keywords": [
     "actions",
-    "dropbox"
+    "dropbox",
+    "github-actions"
   ],
-  "author": "Deka <dekachan16@gmail.com>",
+  "author": "Akshay Dhalwala <akshay.dhalwala@gmail.com> (forked from Deka <dekachan16@gmail.com>)",
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.11.1",
