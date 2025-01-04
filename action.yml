@@ -5,9 +5,15 @@ branding:
   icon: upload-cloud
   color: blue
 inputs:
-  dropbox_access_token:
+  dropbox_refresh_token:
     required: true
-    description: 'Dropbox access token'
+    description: 'Dropbox refresh token - obtain by following https://www.dropbox.com/oauth2/authorize?client_id=<APP_KEY>&token_access_type=offline&response_type=code and then issuing a POST requestvia curl or postman to https://www.dropbox.com/oauth2/token with the code'
+  dropbox_client_id:
+    required: true
+    description: 'Dropbox app key - https://www.dropbox.com/developers/apps'
+  dropbox_client_secret:
+    required: true
+    description: 'Dropbox app secret - https://www.dropbox.com/developers/apps'
   use_root_namespace:
     required: false
     default: 'false'

@@ -1,10 +1,25 @@
 import { Dropbox, files } from 'dropbox';
 import fetch from 'node-fetch';
 
-export async function makeUpload(
-  accessToken: string,
-  useRootNamespace: boolean
-): Promise<{
+function getAccessToken(
+  refreshToken: string,
+  clientId: string,
+  clientSecret: string
+) {
+  // https://www.dropbox.com/oauth2/authorize?client_id=8d6w3qi41koo7i3&token_access_type=offline&response_type=code
+}
+
+export async function makeUpload({
+  refreshToken,
+  clientId,
+  clientSecret,
+  useRootNamespace,
+}: {
+  refreshToken: string;
+  clientId: string;
+  clientSecret: string;
+  useRootNamespace: boolean;
+}): Promise<{
   upload: (
     path: string,
     contents: Buffer,
@@ -15,7 +30,7 @@ export async function makeUpload(
     }
   ) => Promise<void>;
 }> {
-  let dropbox = new Dropbox({ accessToken, fetch });
+  let dropbox = new Dropbox({ refreshToken, clientId, clientSecret, fetch });
 
   if (useRootNamespace) {
     const account = await dropbox.usersGetCurrentAccount();
@@ -25,7 +40,9 @@ export async function makeUpload(
       account.result.root_info.root_namespace_id
     ) {
       dropbox = new Dropbox({
-        accessToken,
+        refreshToken,
+        clientId,
+        clientSecret,
         fetch,
         pathRoot: `{".tag": "root", "root": "${account.result.root_info.root_namespace_id}"}`,
       });

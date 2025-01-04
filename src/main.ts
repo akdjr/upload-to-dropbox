@@ -6,7 +6,6 @@ import { makeUpload } from './upload';
 import { asBoolean, isDirectory } from './utils';
 import { DropboxResponseError } from 'dropbox';
 
-const accessToken = core.getInput('dropbox_access_token');
 const src = core.getInput('src');
 const dest = core.getInput('dest');
 const multiple = asBoolean(core.getInput('multiple'));
@@ -17,9 +16,18 @@ const mute = asBoolean(core.getInput('mute'));
 
 const useRootNamespace = asBoolean(core.getInput('use_root_namespace'));
 
+const refreshToken = core.getInput('dropbox_refresh_token');
+const clientId = core.getInput('dropbox_client_id');
+const clientSecret = core.getInput('dropbox_client_secret');
+
 async function run() {
   try {
-    const { upload } = await makeUpload(accessToken, useRootNamespace);
+    const { upload } = await makeUpload({
+      refreshToken,
+      clientId,
+      clientSecret,
+      useRootNamespace,
+    });
 
     if (!multiple) {
       const contents = await fs.promises.readFile(src);
