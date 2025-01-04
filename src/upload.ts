@@ -1,5 +1,5 @@
-import { Dropbox, files } from 'dropbox'
-import fetch from 'node-fetch'
+import { Dropbox, files } from 'dropbox';
+import fetch from 'node-fetch';
 
 export async function makeUpload(
   accessToken: string,
@@ -9,16 +9,16 @@ export async function makeUpload(
     path: string,
     contents: Buffer,
     options: {
-      mode: string
-      autorename: boolean
-      mute: boolean
+      mode: string;
+      autorename: boolean;
+      mute: boolean;
     }
-  ) => Promise<void>
+  ) => Promise<void>;
 }> {
-  let dropbox = new Dropbox({ accessToken, fetch })
+  let dropbox = new Dropbox({ accessToken, fetch });
 
   if (useRootNamespace) {
-    const account = await dropbox.usersGetCurrentAccount()
+    const account = await dropbox.usersGetCurrentAccount();
 
     if (
       account.result.root_info.home_namespace_id !==
@@ -28,7 +28,7 @@ export async function makeUpload(
         accessToken,
         fetch,
         pathRoot: `{".tag": "root", "root": "${account.result.root_info.root_namespace_id}"}`,
-      })
+      });
     }
   }
 
@@ -40,9 +40,9 @@ export async function makeUpload(
         mode: getMode(options.mode),
         autorename: options.autorename,
         mute: options.mute,
-      })
+      });
     },
-  }
+  };
 }
 
 function getMode(mode: string): files.WriteMode {
@@ -50,11 +50,11 @@ function getMode(mode: string): files.WriteMode {
     case 'overwrite':
       return {
         '.tag': 'overwrite',
-      }
+      };
     case 'add':
     default:
       return {
         '.tag': 'add',
-      }
+      };
   }
 }
