@@ -47,7 +47,6 @@ const path_1 = __nccwpck_require__(6928);
 const upload_1 = __nccwpck_require__(1625);
 const utils_1 = __nccwpck_require__(9771);
 const dropbox_1 = __nccwpck_require__(6898);
-const accessToken = core.getInput('dropbox_access_token');
 const src = core.getInput('src');
 const dest = core.getInput('dest');
 const multiple = (0, utils_1.asBoolean)(core.getInput('multiple'));
@@ -55,9 +54,17 @@ const mode = core.getInput('mode');
 const autorename = (0, utils_1.asBoolean)(core.getInput('autorename'));
 const mute = (0, utils_1.asBoolean)(core.getInput('mute'));
 const useRootNamespace = (0, utils_1.asBoolean)(core.getInput('use_root_namespace'));
+const refreshToken = core.getInput('dropbox_refresh_token');
+const clientId = core.getInput('dropbox_client_id');
+const clientSecret = core.getInput('dropbox_client_secret');
 async function run() {
     try {
-        const { upload } = await (0, upload_1.makeUpload)(accessToken, useRootNamespace);
+        const { upload } = await (0, upload_1.makeUpload)({
+            refreshToken,
+            clientId,
+            clientSecret,
+            useRootNamespace,
+        });
         if (!multiple) {
             const contents = await fs.promises.readFile(src);
             if ((0, utils_1.isDirectory)(dest)) {
@@ -104,14 +111,19 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.makeUpload = makeUpload;
 const dropbox_1 = __nccwpck_require__(6898);
 const node_fetch_1 = __importDefault(__nccwpck_require__(9912));
-async function makeUpload(accessToken, useRootNamespace) {
-    let dropbox = new dropbox_1.Dropbox({ accessToken, fetch: node_fetch_1.default });
+function getAccessToken(refreshToken, clientId, clientSecret) {
+    // https://www.dropbox.com/oauth2/authorize?client_id=8d6w3qi41koo7i3&token_access_type=offline&response_type=code
+}
+async function makeUpload({ refreshToken, clientId, clientSecret, useRootNamespace, }) {
+    let dropbox = new dropbox_1.Dropbox({ refreshToken, clientId, clientSecret, fetch: node_fetch_1.default });
     if (useRootNamespace) {
         const account = await dropbox.usersGetCurrentAccount();
         if (account.result.root_info.home_namespace_id !==
             account.result.root_info.root_namespace_id) {
             dropbox = new dropbox_1.Dropbox({
-                accessToken,
+                refreshToken,
+                clientId,
+                clientSecret,
                 fetch: node_fetch_1.default,
                 pathRoot: `{".tag": "root", "root": "${account.result.root_info.root_namespace_id}"}`,
             });
