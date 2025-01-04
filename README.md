@@ -29,7 +29,7 @@ See [action.yml](action.yml)
 ### Upload a file
 
 ```yaml
-- uses: akdjr/upload-to-dropbox@v3
+- uses: akdjr/upload-to-dropbox@v4
   with:
     dropbox_refresh_token: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     dropbox_client_id: ${{ secrets.DROPBOX_APP_KEY }}
@@ -41,7 +41,7 @@ See [action.yml](action.yml)
 ### Upload a file with overwrite mode
 
 ```yaml
-- uses: akdjr/upload-to-dropbox@v3
+- uses: akdjr/upload-to-dropbox@v4
   with:
     dropbox_refresh_token: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     dropbox_client_id: ${{ secrets.DROPBOX_APP_KEY }}
@@ -54,7 +54,7 @@ See [action.yml](action.yml)
 ### Upload a file with specified name
 
 ```yaml
-- uses: akdjr/upload-to-dropbox@v3
+- uses: akdjr/upload-to-dropbox@v4
   with:
     dropbox_refresh_token: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     dropbox_client_id: ${{ secrets.DROPBOX_APP_KEY }}
@@ -66,7 +66,7 @@ See [action.yml](action.yml)
 ### Upload multiple files
 
 ```yaml
-- uses: akdjr/upload-to-dropbox@v3
+- uses: akdjr/upload-to-dropbox@v4
   with:
     dropbox_refresh_token: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     dropbox_client_id: ${{ secrets.DROPBOX_APP_KEY }}
@@ -79,7 +79,7 @@ See [action.yml](action.yml)
 ### Using root namespace when working with Dropbox Teams
 
 ```yaml
-- uses: akdjr/upload-to-dropbox@v3
+- uses: akdjr/upload-to-dropbox@v4
   with:
     dropbox_refresh_token: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     dropbox_client_id: ${{ secrets.DROPBOX_APP_KEY }}
