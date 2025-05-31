@@ -1,6 +1,6 @@
 {
   "name": "myxie-upload-to-dropbox",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "private": true,
   "description": "Upload files to Dropbox action (forked from upload-to-dropbox)",
   "main": "lib/main.js",

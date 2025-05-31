@@ -1,5 +1,6 @@
 import { Dropbox, files } from 'dropbox';
 import fetch from 'node-fetch';
+import { promises as fs } from 'fs';
 
 function getAccessToken(
   refreshToken: string,
@@ -24,10 +25,20 @@ export async function makeUpload({
     path: string,
     contents: Buffer,
     options: {
-      mode: string;
+      mode?: 'overwrite' | 'add';
       autorename: boolean;
       mute: boolean;
     }
+  ) => Promise<void>,
+  uploadLargeFile: (
+    localPath: string,
+    dropboxPath: string,
+    options: {
+      mode?: 'overwrite' | 'add';
+      autorename: boolean;
+      mute: boolean;
+    },
+    onProgress?: (sent: number, total: number) => void
   ) => Promise<void>;
 }> {
   let dropbox = new Dropbox({ refreshToken, clientId, clientSecret, fetch });
@@ -59,10 +70,13 @@ export async function makeUpload({
         mute: options.mute,
       });
     },
+    uploadLargeFile: async (localPath, dropboxPath, options, onProgress) => {
+      await uploadLargeFile(dropbox, localPath, dropboxPath, options, onProgress);
+    },
   };
 }
 
-function getMode(mode: string): files.WriteMode {
+function getMode(mode?: 'overwrite' | 'add'): files.WriteMode {
   switch (mode) {
     case 'overwrite':
       return {
@@ -73,5 +87,112 @@ function getMode(mode: string): files.WriteMode {
       return {
         '.tag': 'add',
       };
+  }
+}
+
+const FOUR_MB     = 4 * 1024 * 1024;       // 4 MiB
+const MAX_CHUNK   = 150 * 1024 * 1024;     // Dropbox’s per-request upload cap
+const CHUNK_SIZE  = 100 * 1024 * 1024;     // 100 MiB  (exactly 25 × 4 MiB)
+
+/**
+ * Upload any-size local file to Dropbox in 100 MiB (4 MiB-aligned) blocks.
+ *
+ * • For files ≤ 150 MiB we fall back to a single `filesUpload` call.  
+ * • For larger files we stream them with the upload-session trio:
+ *   - filesUploadSessionStart
+ *   - filesUploadSessionAppendV2   (all multiples of 4 MiB)
+ *   - filesUploadSessionFinish
+ */
+async function uploadLargeFile(
+  dbx: Dropbox,
+  localPath: string,
+  dropboxPath: string,
+  options: {
+    mode?: 'overwrite' | 'add';
+    autorename: boolean;
+    mute: boolean;
+  },
+  onProgress?: (sent: number, total: number) => void
+): Promise<void> {
+  const fh            = await fs.open(localPath, "r");
+  const { size }      = await fh.stat();
+  const totalBytes    = size;
+
+  // ---------- Small files: simple upload ------------------------------------
+  if (totalBytes <= MAX_CHUNK) {
+    const buffer = Buffer.allocUnsafe(totalBytes);
+    await fh.read(buffer, 0, totalBytes, 0);
+    await fh.close();
+
+    const res = await dbx.filesUpload({
+      path: dropboxPath,
+      contents: buffer,
+      mode: getMode(options.mode),
+      autorename: options.autorename,
+      mute: options.mute,
+      strict_conflict: false,
+    });
+
+    onProgress?.(totalBytes, totalBytes);
+    return;
+  }
+
+  // ---------- Large files: upload-session strategy --------------------------
+  let offset    = 0;
+  let sessionId = "";
+
+  try {
+    // -- 1) Start session with first 100 MiB block ---------------------------
+    
+    const first = Math.min(CHUNK_SIZE, totalBytes);
+    const firstChunk   = Buffer.allocUnsafe(first);
+    await fh.read(firstChunk, 0, first, offset);
+
+    const { result } = await dbx.filesUploadSessionStart({
+      close: false,
+      contents: firstChunk,
+    });
+    sessionId = result.session_id;
+
+    offset += first;
+    onProgress?.(offset, totalBytes);
+    
+
+    // -- 2) Append every full 100 MiB block (each multiple of 4 MiB) ---------
+    while (totalBytes - offset > CHUNK_SIZE) {
+      const buf = Buffer.allocUnsafe(CHUNK_SIZE);
+      await fh.read(buf, 0, CHUNK_SIZE, offset);
+
+      await dbx.filesUploadSessionAppendV2({
+        cursor: { session_id: sessionId, offset },
+        close : false,
+        contents: buf,
+      });
+
+      offset += CHUNK_SIZE;
+      onProgress?.(offset, totalBytes);
+    }
+
+    // -- 3) Finish with the remaining bytes (< 100 MiB, any length) ----------
+    const remaining = totalBytes - offset;
+    const lastChunk       = Buffer.allocUnsafe(remaining);
+    await fh.read(lastChunk, 0, remaining, offset);
+
+    const finishRes = await dbx.filesUploadSessionFinish({
+      cursor: { session_id: sessionId, offset },
+      commit: {
+        path: dropboxPath,
+        mode: { ".tag": "add" },
+        autorename: true,
+        mute: false,
+        strict_conflict: false,
+      },
+      contents: lastChunk,
+    });
+
+    onProgress?.(totalBytes, totalBytes);
+    return;
+  } finally {
+    await fh.close();
   }
 }
