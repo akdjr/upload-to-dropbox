@@ -42,7 +42,6 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const globby_1 = __nccwpck_require__(4928);
 const core = __importStar(__nccwpck_require__(9999));
-const fs = __importStar(__nccwpck_require__(9896));
 const path_1 = __nccwpck_require__(6928);
 const upload_1 = __nccwpck_require__(1625);
 const utils_1 = __nccwpck_require__(9771);
@@ -59,21 +58,27 @@ const clientId = core.getInput('dropbox_client_id');
 const clientSecret = core.getInput('dropbox_client_secret');
 async function run() {
     try {
-        const { upload } = await (0, upload_1.makeUpload)({
+        const { upload, uploadLargeFile } = await (0, upload_1.makeUpload)({
             refreshToken,
             clientId,
             clientSecret,
             useRootNamespace,
         });
         if (!multiple) {
-            const contents = await fs.promises.readFile(src);
+            // const contents = await fs.promises.readFile(src);
             if ((0, utils_1.isDirectory)(dest)) {
                 const path = (0, path_1.join)(dest, (0, path_1.basename)(src));
-                await upload(path, contents, { mode, autorename, mute });
+                // await upload(path, contents, { mode, autorename, mute });
+                await uploadLargeFile(src, path, { mode, autorename, mute }, (sent, total) => {
+                    core.info(`Uploading: ${src} -> ${path} (${sent}/${total})`);
+                });
                 core.info(`Uploaded: ${src} -> ${path}`);
             }
             else {
-                await upload(dest, contents, { mode, autorename, mute });
+                // await upload(dest, contents, { mode, autorename, mute });
+                await uploadLargeFile(src, dest, { mode, autorename, mute }, (sent, total) => {
+                    core.info(`Uploading: ${src} -> ${dest} (${sent}/${total})`);
+                });
                 core.info(`Uploaded: ${src} -> ${dest}`);
             }
         }
@@ -81,8 +86,11 @@ async function run() {
             const files = await (0, globby_1.globby)(src);
             await Promise.all(files.map(async (file) => {
                 const path = (0, path_1.join)(dest, file);
-                const contents = await fs.promises.readFile(file);
-                await upload(path, contents, { mode, autorename, mute });
+                // const contents = await fs.promises.readFile(file);
+                // await upload(path, contents, { mode, autorename, mute });
+                await uploadLargeFile(file, path, { mode, autorename, mute }, (sent, total) => {
+                    core.info(`Uploading: ${file} -> ${path} (${sent}/${total})`);
+                });
                 core.info(`Uploaded: ${file} -> ${path}`);
             }));
         }
@@ -111,6 +119,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.makeUpload = makeUpload;
 const dropbox_1 = __nccwpck_require__(6898);
 const node_fetch_1 = __importDefault(__nccwpck_require__(9912));
+const fs_1 = __nccwpck_require__(9896);
 function getAccessToken(refreshToken, clientId, clientSecret) {
     // https://www.dropbox.com/oauth2/authorize?client_id=8d6w3qi41koo7i3&token_access_type=offline&response_type=code
 }
@@ -139,6 +148,9 @@ async function makeUpload({ refreshToken, clientId, clientSecret, useRootNamespa
                 mute: options.mute,
             });
         },
+        uploadLargeFile: async (localPath, dropboxPath, options, onProgress) => {
+            await uploadLargeFile(dropbox, localPath, dropboxPath, options, onProgress);
+        },
     };
 }
 function getMode(mode) {
@@ -152,6 +164,87 @@ function getMode(mode) {
             return {
                 '.tag': 'add',
             };
+    }
+}
+const FOUR_MB = (/* unused pure expression or super */ null && (4 * 1024 * 1024)); // 4 MiB
+const MAX_CHUNK = 150 * 1024 * 1024; // Dropbox’s per-request upload cap
+const CHUNK_SIZE = 100 * 1024 * 1024; // 100 MiB  (exactly 25 × 4 MiB)
+/**
+ * Upload any-size local file to Dropbox in 100 MiB (4 MiB-aligned) blocks.
+ *
+ * • For files ≤ 150 MiB we fall back to a single `filesUpload` call.
+ * • For larger files we stream them with the upload-session trio:
+ *   - filesUploadSessionStart
+ *   - filesUploadSessionAppendV2   (all multiples of 4 MiB)
+ *   - filesUploadSessionFinish
+ */
+async function uploadLargeFile(dbx, localPath, dropboxPath, options, onProgress) {
+    const fh = await fs_1.promises.open(localPath, "r");
+    const { size } = await fh.stat();
+    const totalBytes = size;
+    // ---------- Small files: simple upload ------------------------------------
+    if (totalBytes <= MAX_CHUNK) {
+        const buffer = Buffer.allocUnsafe(totalBytes);
+        await fh.read(buffer, 0, totalBytes, 0);
+        await fh.close();
+        const res = await dbx.filesUpload({
+            path: dropboxPath,
+            contents: buffer,
+            mode: getMode(options.mode),
+            autorename: options.autorename,
+            mute: options.mute,
+            strict_conflict: false,
+        });
+        onProgress?.(totalBytes, totalBytes);
+        return;
+    }
+    // ---------- Large files: upload-session strategy --------------------------
+    let offset = 0;
+    let sessionId = "";
+    try {
+        // -- 1) Start session with first 100 MiB block ---------------------------
+        const first = Math.min(CHUNK_SIZE, totalBytes);
+        const firstChunk = Buffer.allocUnsafe(first);
+        await fh.read(firstChunk, 0, first, offset);
+        const { result } = await dbx.filesUploadSessionStart({
+            close: false,
+            contents: firstChunk,
+        });
+        sessionId = result.session_id;
+        offset += first;
+        onProgress?.(offset, totalBytes);
+        // -- 2) Append every full 100 MiB block (each multiple of 4 MiB) ---------
+        while (totalBytes - offset > CHUNK_SIZE) {
+            const buf = Buffer.allocUnsafe(CHUNK_SIZE);
+            await fh.read(buf, 0, CHUNK_SIZE, offset);
+            await dbx.filesUploadSessionAppendV2({
+                cursor: { session_id: sessionId, offset },
+                close: false,
+                contents: buf,
+            });
+            offset += CHUNK_SIZE;
+            onProgress?.(offset, totalBytes);
+        }
+        // -- 3) Finish with the remaining bytes (< 100 MiB, any length) ----------
+        const remaining = totalBytes - offset;
+        const lastChunk = Buffer.allocUnsafe(remaining);
+        await fh.read(lastChunk, 0, remaining, offset);
+        const finishRes = await dbx.filesUploadSessionFinish({
+            cursor: { session_id: sessionId, offset },
+            commit: {
+                path: dropboxPath,
+                mode: { ".tag": "add" },
+                autorename: true,
+                mute: false,
+                strict_conflict: false,
+            },
+            contents: lastChunk,
+        });
+        onProgress?.(totalBytes, totalBytes);
+        return;
+    }
+    finally {
+        await fh.close();
     }
 }
 
