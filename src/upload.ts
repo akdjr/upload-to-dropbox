@@ -182,9 +182,9 @@ async function uploadLargeFile(
       cursor: { session_id: sessionId, offset },
       commit: {
         path: dropboxPath,
-        mode: { ".tag": "add" },
-        autorename: true,
-        mute: false,
+        mode: getMode(options.mode),
+        autorename: options.autorename,
+        mute: options.mute,
         strict_conflict: false,
       },
       contents: lastChunk,
