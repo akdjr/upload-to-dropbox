@@ -76,7 +76,7 @@ function getMode(mode?: 'overwrite' | 'add'): files.WriteMode {
 
 async function getSharedLink(dbx: Dropbox, path: string) {
   core.info(`Getting shared link for ${path}`);
-  
+
   return await dbx.sharingCreateSharedLinkWithSettings({
     path,
     settings: {
@@ -87,22 +87,24 @@ async function getSharedLink(dbx: Dropbox, path: string) {
     },
   }).then((res) => {
     return res.result.url.replace('dl=0', 'dl=1');
-  }).catch(async (err: {error: DropboxResponseError<sharing.CreateSharedLinkWithSettingsError>}) => {
-    core.info(JSON.stringify(err));
-    core.error(JSON.stringify(err));
+  }).catch(async (err: DropboxResponseError<sharing.CreateSharedLinkWithSettingsError>) => {
+    if (err.error['.tag'] === 'shared_link_already_exists') {
+      core.info(`Shared link already exists for ${path}, getting existing link`);
 
-    if (err.error.error['.tag'] === 'shared_link_already_exists') {
       return await dbx.sharingListSharedLinks({
         path
       }).then((res) => {
         if (res.result.links.length > 0) {
-          return res.result.links[0].url.replace('dl=0', 'dl=1');
+          const url = res.result.links[0].url.replace('dl=0', 'dl=1');
+
+          core.info(`Found ${res.result.links.length} shared links for ${path}, using the first one: ${url}`);
+          return url;
         } else {
+          core.error(`No shared links found for ${path}`);
           return Promise.reject({error: 'shared_links_empty', message: 'No shared links found for the given path'});
         }
       })
     } else {
-      core.info(JSON.stringify(err));
       core.error(JSON.stringify(err));
       return Promise.reject(err);
     }

@@ -192,6 +192,41 @@ function getMode(mode) {
             };
     }
 }
+async function getSharedLink(dbx, path) {
+    core.info(`Getting shared link for ${path}`);
+    return await dbx.sharingCreateSharedLinkWithSettings({
+        path,
+        settings: {
+            audience: {
+                '.tag': 'public',
+            },
+            allow_download: true,
+        },
+    }).then((res) => {
+        return res.result.url.replace('dl=0', 'dl=1');
+    }).catch(async (err) => {
+        if (err.error['.tag'] === 'shared_link_already_exists') {
+            core.info(`Shared link already exists for ${path}, getting existing link`);
+            return await dbx.sharingListSharedLinks({
+                path
+            }).then((res) => {
+                if (res.result.links.length > 0) {
+                    const url = res.result.links[0].url.replace('dl=0', 'dl=1');
+                    core.info(`Found ${res.result.links.length} shared links for ${path}, using the first one: ${url}`);
+                    return url;
+                }
+                else {
+                    core.error(`No shared links found for ${path}`);
+                    return Promise.reject({ error: 'shared_links_empty', message: 'No shared links found for the given path' });
+                }
+            });
+        }
+        else {
+            core.error(JSON.stringify(err));
+            return Promise.reject(err);
+        }
+    });
+}
 const MAX_CHUNK = 150 * 1024 * 1024; // Dropbox’s per-request upload cap
 const CHUNK_SIZE = 100 * 1024 * 1024; // 100 MiB  (exactly 25 × 4 MiB)
 /**
@@ -222,17 +257,8 @@ async function uploadLargeFile(dbx, localPath, dropboxPath, options, onProgress)
         });
         onProgress?.(totalBytes, totalBytes);
         if (options.sharedLink) {
-            const { result } = await dbx.sharingCreateSharedLinkWithSettings({
-                path: dropboxPath,
-                settings: {
-                    audience: {
-                        '.tag': 'public',
-                    },
-                    allow_download: true,
-                },
-            });
-            result.url = result.url.replace('dl=0', 'dl=1');
-            core.setOutput('shared_link', result.url);
+            const sharedLink = await getSharedLink(dbx, dropboxPath);
+            core.setOutput('shared_link', sharedLink);
         }
         else {
             core.setOutput('shared_link', '');
@@ -280,17 +306,8 @@ async function uploadLargeFile(dbx, localPath, dropboxPath, options, onProgress)
         });
         onProgress?.(totalBytes, totalBytes);
         if (options.sharedLink) {
-            const { result } = await dbx.sharingCreateSharedLinkWithSettings({
-                path: dropboxPath,
-                settings: {
-                    audience: {
-                        '.tag': 'public',
-                    },
-                    allow_download: true,
-                },
-            });
-            result.url = result.url.replace('dl=0', 'dl=1');
-            core.setOutput('shared_link', result.url);
+            const sharedLink = await getSharedLink(dbx, dropboxPath);
+            core.setOutput('shared_link', sharedLink);
         }
         else {
             core.setOutput('shared_link', '');
