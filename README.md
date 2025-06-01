@@ -23,7 +23,7 @@ See [action.yml](action.yml)
 
 ### Setup
 
-1. Create an app with the `files.content.write` scope on [App Console](https://www.dropbox.com/developers/apps).
+1. Create an app with the `files.content.write` scope on [App Console](https://www.dropbox.com/developers/apps). Optionally add `sharing.write` if you wish to use the shared_link option.
 2. Save the app key and app secret as `DROPBOX_APP_KEY` and `DROPBOX_APP_SECRET` on your repository secrets.
 3. Follow the OAUTH flow by going to [https://www.dropbox.com/oauth2/authorize?client_id=<APP_KEY>&token_access_type=offline&response_type=code](https://www.dropbox.com/oauth2/authorize?client_id=<APP_KEY>&token_access_type=offline&response_type=code) - replace APP_KEY with your own app key.
 4. Once you allow access, take the authorization code and issue a POST request to https://api.dropbox.com/oauth2/token with the code. See [https://www.dropbox.com/developers/documentation/http/documentation](https://www.dropbox.com/developers/documentation/http/documentation) for documentation on the oauth2/token API. Specifically, you want to follow the code flow access token request. Note that redirect_uri is not used if you are following these steps.
