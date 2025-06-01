@@ -231,6 +231,7 @@ async function uploadLargeFile(dbx, localPath, dropboxPath, options, onProgress)
                     allow_download: true,
                 },
             });
+            result.url = result.url.replace('dl=0', 'dl=1');
             core.setOutput('shared_link', result.url);
         }
         else {
@@ -288,6 +289,7 @@ async function uploadLargeFile(dbx, localPath, dropboxPath, options, onProgress)
                     allow_download: true,
                 },
             });
+            result.url = result.url.replace('dl=0', 'dl=1');
             core.setOutput('shared_link', result.url);
         }
         else {

@@ -130,6 +130,7 @@ async function uploadLargeFile(
         },
       });
 
+      result.url = result.url.replace('dl=0', 'dl=1');
       core.setOutput('shared_link', result.url);
     } else {
       core.setOutput('shared_link', '');
@@ -199,6 +200,7 @@ async function uploadLargeFile(
         },
       });
 
+      result.url = result.url.replace('dl=0', 'dl=1');
       core.setOutput('shared_link', result.url);
     } else {
       core.setOutput('shared_link', '');
