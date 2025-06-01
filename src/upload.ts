@@ -1,6 +1,7 @@
 import { Dropbox, files } from 'dropbox';
 import fetch from 'node-fetch';
 import { promises as fs } from 'fs';
+import * as core from '@actions/core';
 
 function getAccessToken(
   refreshToken: string,
@@ -21,15 +22,6 @@ export async function makeUpload({
   clientSecret: string;
   useRootNamespace: boolean;
 }): Promise<{
-  upload: (
-    path: string,
-    contents: Buffer,
-    options: {
-      mode?: 'overwrite' | 'add';
-      autorename: boolean;
-      mute: boolean;
-    }
-  ) => Promise<void>,
   uploadLargeFile: (
     localPath: string,
     dropboxPath: string,
@@ -37,6 +29,7 @@ export async function makeUpload({
       mode?: 'overwrite' | 'add';
       autorename: boolean;
       mute: boolean;
+      sharedLink: boolean;
     },
     onProgress?: (sent: number, total: number) => void
   ) => Promise<void>;
@@ -61,15 +54,6 @@ export async function makeUpload({
   }
 
   return {
-    upload: async (path, contents, options) => {
-      await dropbox.filesUpload({
-        path,
-        contents,
-        mode: getMode(options.mode),
-        autorename: options.autorename,
-        mute: options.mute,
-      });
-    },
     uploadLargeFile: async (localPath, dropboxPath, options, onProgress) => {
       await uploadLargeFile(dropbox, localPath, dropboxPath, options, onProgress);
     },
@@ -110,6 +94,7 @@ async function uploadLargeFile(
     mode?: 'overwrite' | 'add';
     autorename: boolean;
     mute: boolean;
+    sharedLink: boolean;
   },
   onProgress?: (sent: number, total: number) => void
 ): Promise<void> {
@@ -133,6 +118,22 @@ async function uploadLargeFile(
     });
 
     onProgress?.(totalBytes, totalBytes);
+
+    if (options.sharedLink) {
+      const {result} = await dbx.sharingCreateSharedLinkWithSettings({
+        path: dropboxPath,
+        settings: {
+          requested_visibility: {
+            '.tag': 'public',
+          },
+        },
+      });
+
+      core.setOutput('shared_link', result.url);
+    } else {
+      core.setOutput('shared_link', '');
+    }
+
     return;
   }
 
@@ -185,6 +186,22 @@ async function uploadLargeFile(
     });
 
     onProgress?.(totalBytes, totalBytes);
+
+    if (options.sharedLink) {
+      const {result} = await dbx.sharingCreateSharedLinkWithSettings({
+        path: dropboxPath,
+        settings: {
+          requested_visibility: {
+            '.tag': 'public',
+          },
+        },
+      });
+
+      core.setOutput('shared_link', result.url);
+    } else {
+      core.setOutput('shared_link', '');
+    }
+    
     return;
   } finally {
     await fh.close();

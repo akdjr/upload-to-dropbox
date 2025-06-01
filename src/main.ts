@@ -1,6 +1,5 @@
 import { globby } from 'globby';
 import * as core from '@actions/core';
-import * as fs from 'fs';
 import { join, basename } from 'path';
 import { makeUpload } from './upload';
 import { asBoolean, isDirectory } from './utils';
@@ -13,6 +12,7 @@ const multiple = asBoolean(core.getInput('multiple'));
 const mode = core.getInput('mode') as 'overwrite' | 'add' | undefined;
 const autorename = asBoolean(core.getInput('autorename'));
 const mute = asBoolean(core.getInput('mute'));
+const sharedLink = asBoolean(core.getInput('shared_link'));
 
 const useRootNamespace = asBoolean(core.getInput('use_root_namespace'));
 
@@ -22,7 +22,7 @@ const clientSecret = core.getInput('dropbox_client_secret');
 
 async function run() {
   try {
-    const { upload, uploadLargeFile } = await makeUpload({
+    const { uploadLargeFile } = await makeUpload({
       refreshToken,
       clientId,
       clientSecret,
@@ -34,13 +34,13 @@ async function run() {
       if (isDirectory(dest)) {
         const path = join(dest, basename(src));
         // await upload(path, contents, { mode, autorename, mute });
-        await uploadLargeFile(src, path, { mode, autorename, mute }, (sent, total) => {
+        await uploadLargeFile(src, path, { mode, autorename, mute, sharedLink }, (sent, total) => {
           core.info(`Uploading: ${src} -> ${path} (${sent}/${total})`);
         });
         core.info(`Uploaded: ${src} -> ${path}`);
       } else {
         // await upload(dest, contents, { mode, autorename, mute });
-        await uploadLargeFile(src, dest, { mode, autorename, mute }, (sent, total) => {
+        await uploadLargeFile(src, dest, { mode, autorename, mute, sharedLink }, (sent, total) => {
           core.info(`Uploading: ${src} -> ${dest} (${sent}/${total})`);
         });
         core.info(`Uploaded: ${src} -> ${dest}`);
@@ -52,7 +52,7 @@ async function run() {
           const path = join(dest, file);
           // const contents = await fs.promises.readFile(file);
           // await upload(path, contents, { mode, autorename, mute });
-          await uploadLargeFile(file, path, { mode, autorename, mute }, (sent, total) => {
+          await uploadLargeFile(file, path, { mode, autorename, mute, sharedLink }, (sent, total) => {
             core.info(`Uploading: ${file} -> ${path} (${sent}/${total})`);
           });
           core.info(`Uploaded: ${file} -> ${path}`);

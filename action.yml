@@ -25,6 +25,10 @@ inputs:
     required: false
     default: '/'
     description: "Destination path for upload. e.g. '/file.txt', '/dest/'"
+  shared_link:
+    required: false
+    default: 'false'
+    description: 'Create a shared link for the uploaded file - default visibility is public. default: false'
   multiple:
     required: false
     default: 'false'
@@ -41,6 +45,9 @@ inputs:
     required: false
     default: 'false'
     description: "If true, this tells the clients that this modification shouldn't result in a user notification. default: false"
+outputs:
+  shared_link:
+    description: 'Shared link for the uploaded file (empty if shared_link is false)'
 runs:
   using: 'node20'
   main: 'dist/index.js'
