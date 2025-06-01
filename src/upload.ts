@@ -90,7 +90,6 @@ function getMode(mode?: 'overwrite' | 'add'): files.WriteMode {
   }
 }
 
-const FOUR_MB     = 4 * 1024 * 1024;       // 4 MiB
 const MAX_CHUNK   = 150 * 1024 * 1024;     // Dropbox’s per-request upload cap
 const CHUNK_SIZE  = 100 * 1024 * 1024;     // 100 MiB  (exactly 25 × 4 MiB)
 
@@ -142,31 +141,27 @@ async function uploadLargeFile(
   let sessionId = "";
 
   try {
+    let chunk = Buffer.allocUnsafe(CHUNK_SIZE);
     // -- 1) Start session with first 100 MiB block ---------------------------
-    
-    const first = Math.min(CHUNK_SIZE, totalBytes);
-    const firstChunk   = Buffer.allocUnsafe(first);
-    await fh.read(firstChunk, 0, first, offset);
+    await fh.read(chunk, 0, CHUNK_SIZE, offset);
 
     const { result } = await dbx.filesUploadSessionStart({
       close: false,
-      contents: firstChunk,
+      contents: chunk,
     });
     sessionId = result.session_id;
 
-    offset += first;
+    offset += CHUNK_SIZE;
     onProgress?.(offset, totalBytes);
     
-
     // -- 2) Append every full 100 MiB block (each multiple of 4 MiB) ---------
     while (totalBytes - offset > CHUNK_SIZE) {
-      const buf = Buffer.allocUnsafe(CHUNK_SIZE);
-      await fh.read(buf, 0, CHUNK_SIZE, offset);
+      await fh.read(chunk, 0, CHUNK_SIZE, offset);
 
       await dbx.filesUploadSessionAppendV2({
         cursor: { session_id: sessionId, offset },
         close : false,
-        contents: buf,
+        contents: chunk,
       });
 
       offset += CHUNK_SIZE;
@@ -175,8 +170,7 @@ async function uploadLargeFile(
 
     // -- 3) Finish with the remaining bytes (< 100 MiB, any length) ----------
     const remaining = totalBytes - offset;
-    const lastChunk       = Buffer.allocUnsafe(remaining);
-    await fh.read(lastChunk, 0, remaining, offset);
+    await fh.read(chunk, 0, remaining, offset);
 
     const finishRes = await dbx.filesUploadSessionFinish({
       cursor: { session_id: sessionId, offset },
@@ -187,7 +181,7 @@ async function uploadLargeFile(
         mute: options.mute,
         strict_conflict: false,
       },
-      contents: lastChunk,
+      contents: chunk,
     });
 
     onProgress?.(totalBytes, totalBytes);
