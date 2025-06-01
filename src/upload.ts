@@ -86,6 +86,8 @@ async function getSharedLink(dbx: Dropbox, path: string) {
   }).then((res) => {
     return res.result.url.replace('dl=0', 'dl=1');
   }).catch(async (err: DropboxResponseError<sharing.CreateSharedLinkWithSettingsError>) => {
+    core.info(JSON.stringify(err));
+
     if (err.error['.tag'] === 'shared_link_already_exists') {
       return await dbx.sharingListSharedLinks({
         path
