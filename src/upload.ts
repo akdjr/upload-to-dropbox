@@ -75,8 +75,10 @@ function getMode(mode?: 'overwrite' | 'add'): files.WriteMode {
 }
 
 async function getSharedLink(dbx: Dropbox, path: string) {
+  core.info(`Getting shared link for ${path}`);
+  
   return await dbx.sharingCreateSharedLinkWithSettings({
-    path: path,
+    path,
     settings: {
       audience: {
         '.tag': 'public',
@@ -85,10 +87,11 @@ async function getSharedLink(dbx: Dropbox, path: string) {
     },
   }).then((res) => {
     return res.result.url.replace('dl=0', 'dl=1');
-  }).catch(async (err: DropboxResponseError<sharing.CreateSharedLinkWithSettingsError>) => {
+  }).catch(async (err: {error: DropboxResponseError<sharing.CreateSharedLinkWithSettingsError>}) => {
     core.info(JSON.stringify(err));
+    core.error(JSON.stringify(err));
 
-    if (err.error['.tag'] === 'shared_link_already_exists') {
+    if (err.error.error['.tag'] === 'shared_link_already_exists') {
       return await dbx.sharingListSharedLinks({
         path
       }).then((res) => {
@@ -99,6 +102,8 @@ async function getSharedLink(dbx: Dropbox, path: string) {
         }
       })
     } else {
+      core.info(JSON.stringify(err));
+      core.error(JSON.stringify(err));
       return Promise.reject(err);
     }
   });
