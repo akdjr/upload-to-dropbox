@@ -1,4 +1,4 @@
-import { Dropbox, files } from 'dropbox';
+import { Dropbox, DropboxResponseError, files, sharing } from 'dropbox';
 import fetch from 'node-fetch';
 import { promises as fs } from 'fs';
 import * as core from '@actions/core';
@@ -74,6 +74,34 @@ function getMode(mode?: 'overwrite' | 'add'): files.WriteMode {
   }
 }
 
+async function getSharedLink(dbx: Dropbox, path: string) {
+  return await dbx.sharingCreateSharedLinkWithSettings({
+    path: path,
+    settings: {
+      audience: {
+        '.tag': 'public',
+      },
+      allow_download: true,
+    },
+  }).then((res) => {
+    return res.result.url.replace('dl=0', 'dl=1');
+  }).catch(async (err: DropboxResponseError<sharing.CreateSharedLinkWithSettingsError>) => {
+    if (err.error['.tag'] === 'shared_link_already_exists') {
+      return await dbx.sharingListSharedLinks({
+        path
+      }).then((res) => {
+        if (res.result.links.length > 0) {
+          return res.result.links[0].url.replace('dl=0', 'dl=1');
+        } else {
+          return Promise.reject({error: 'shared_links_empty', message: 'No shared links found for the given path'});
+        }
+      })
+    } else {
+      return Promise.reject(err);
+    }
+  });
+}
+
 const MAX_CHUNK   = 150 * 1024 * 1024;     // Dropbox’s per-request upload cap
 const CHUNK_SIZE  = 100 * 1024 * 1024;     // 100 MiB  (exactly 25 × 4 MiB)
 
@@ -120,18 +148,8 @@ async function uploadLargeFile(
     onProgress?.(totalBytes, totalBytes);
 
     if (options.sharedLink) {
-      const {result} = await dbx.sharingCreateSharedLinkWithSettings({
-        path: dropboxPath,
-        settings: {
-          audience: {
-            '.tag': 'public',
-          },
-          allow_download: true,
-        },
-      });
-
-      result.url = result.url.replace('dl=0', 'dl=1');
-      core.setOutput('shared_link', result.url);
+      const sharedLink = await getSharedLink(dbx, dropboxPath);
+      core.setOutput('shared_link', sharedLink);
     } else {
       core.setOutput('shared_link', '');
     }
@@ -190,18 +208,8 @@ async function uploadLargeFile(
     onProgress?.(totalBytes, totalBytes);
 
     if (options.sharedLink) {
-      const {result} = await dbx.sharingCreateSharedLinkWithSettings({
-        path: dropboxPath,
-        settings: {
-          audience: {
-            '.tag': 'public',
-          },
-          allow_download: true,
-        },
-      });
-
-      result.url = result.url.replace('dl=0', 'dl=1');
-      core.setOutput('shared_link', result.url);
+      const sharedLink = await getSharedLink(dbx, dropboxPath);
+      core.setOutput('shared_link', sharedLink);
     } else {
       core.setOutput('shared_link', '');
     }
