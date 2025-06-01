@@ -87,8 +87,35 @@ async function getSharedLink(dbx: Dropbox, path: string) {
     },
   }).then((res) => {
     return res.result.url.replace('dl=0', 'dl=1');
-  }).catch(async (err: DropboxResponseError<sharing.CreateSharedLinkWithSettingsError>) => {
-    if (err.error['.tag'] === 'shared_link_already_exists') {
+  }).catch(async (err/* : DropboxResponseError<sharing.CreateSharedLinkWithSettingsError> */) => {
+    /**
+     * TODO: DropboxResponseError<sharing.CreateSharedLinkWithSettingsError> does not seem to be typed correctly
+     * Should be the following:
+     * {
+     *  status: 409,
+     *  headers: {},
+     *  error: {
+     *    error: {
+     *      error_summary: 'shared_link_already_exists',
+     *      '.tag': 'shared_link_already_exists'
+     *    }
+     *  }
+     * }
+     * 
+     * But it is the following:
+     * {
+     *  status: 409,
+     *  headers: {},
+     *  error: {
+     *    error_summary: 'shared_link_already_exists',
+     *    '.tag': 'shared_link_already_exists'
+     *  }
+     * }
+     * 
+     */
+    
+    
+    if (err.error.error['.tag'] === 'shared_link_already_exists') {
       core.info(`Shared link already exists for ${path}, getting existing link`);
 
       return await dbx.sharingListSharedLinks({
