@@ -52,13 +52,14 @@ const multiple = (0, utils_1.asBoolean)(core.getInput('multiple'));
 const mode = core.getInput('mode');
 const autorename = (0, utils_1.asBoolean)(core.getInput('autorename'));
 const mute = (0, utils_1.asBoolean)(core.getInput('mute'));
+const sharedLink = (0, utils_1.asBoolean)(core.getInput('shared_link'));
 const useRootNamespace = (0, utils_1.asBoolean)(core.getInput('use_root_namespace'));
 const refreshToken = core.getInput('dropbox_refresh_token');
 const clientId = core.getInput('dropbox_client_id');
 const clientSecret = core.getInput('dropbox_client_secret');
 async function run() {
     try {
-        const { upload, uploadLargeFile } = await (0, upload_1.makeUpload)({
+        const { uploadLargeFile } = await (0, upload_1.makeUpload)({
             refreshToken,
             clientId,
             clientSecret,
@@ -69,14 +70,14 @@ async function run() {
             if ((0, utils_1.isDirectory)(dest)) {
                 const path = (0, path_1.join)(dest, (0, path_1.basename)(src));
                 // await upload(path, contents, { mode, autorename, mute });
-                await uploadLargeFile(src, path, { mode, autorename, mute }, (sent, total) => {
+                await uploadLargeFile(src, path, { mode, autorename, mute, sharedLink }, (sent, total) => {
                     core.info(`Uploading: ${src} -> ${path} (${sent}/${total})`);
                 });
                 core.info(`Uploaded: ${src} -> ${path}`);
             }
             else {
                 // await upload(dest, contents, { mode, autorename, mute });
-                await uploadLargeFile(src, dest, { mode, autorename, mute }, (sent, total) => {
+                await uploadLargeFile(src, dest, { mode, autorename, mute, sharedLink }, (sent, total) => {
                     core.info(`Uploading: ${src} -> ${dest} (${sent}/${total})`);
                 });
                 core.info(`Uploaded: ${src} -> ${dest}`);
@@ -88,7 +89,7 @@ async function run() {
                 const path = (0, path_1.join)(dest, file);
                 // const contents = await fs.promises.readFile(file);
                 // await upload(path, contents, { mode, autorename, mute });
-                await uploadLargeFile(file, path, { mode, autorename, mute }, (sent, total) => {
+                await uploadLargeFile(file, path, { mode, autorename, mute, sharedLink }, (sent, total) => {
                     core.info(`Uploading: ${file} -> ${path} (${sent}/${total})`);
                 });
                 core.info(`Uploaded: ${file} -> ${path}`);
@@ -112,6 +113,39 @@ void run();
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -120,6 +154,7 @@ exports.makeUpload = makeUpload;
 const dropbox_1 = __nccwpck_require__(6898);
 const node_fetch_1 = __importDefault(__nccwpck_require__(9912));
 const fs_1 = __nccwpck_require__(9896);
+const core = __importStar(__nccwpck_require__(9999));
 function getAccessToken(refreshToken, clientId, clientSecret) {
     // https://www.dropbox.com/oauth2/authorize?client_id=8d6w3qi41koo7i3&token_access_type=offline&response_type=code
 }
@@ -139,15 +174,6 @@ async function makeUpload({ refreshToken, clientId, clientSecret, useRootNamespa
         }
     }
     return {
-        upload: async (path, contents, options) => {
-            await dropbox.filesUpload({
-                path,
-                contents,
-                mode: getMode(options.mode),
-                autorename: options.autorename,
-                mute: options.mute,
-            });
-        },
         uploadLargeFile: async (localPath, dropboxPath, options, onProgress) => {
             await uploadLargeFile(dropbox, localPath, dropboxPath, options, onProgress);
         },
@@ -166,7 +192,6 @@ function getMode(mode) {
             };
     }
 }
-const FOUR_MB = (/* unused pure expression or super */ null && (4 * 1024 * 1024)); // 4 MiB
 const MAX_CHUNK = 150 * 1024 * 1024; // Dropbox’s per-request upload cap
 const CHUNK_SIZE = 100 * 1024 * 1024; // 100 MiB  (exactly 25 × 4 MiB)
 /**
@@ -196,51 +221,76 @@ async function uploadLargeFile(dbx, localPath, dropboxPath, options, onProgress)
             strict_conflict: false,
         });
         onProgress?.(totalBytes, totalBytes);
+        if (options.sharedLink) {
+            const { result } = await dbx.sharingCreateSharedLinkWithSettings({
+                path: dropboxPath,
+                settings: {
+                    requested_visibility: {
+                        '.tag': 'public',
+                    },
+                },
+            });
+            core.setOutput('shared_link', result.url);
+        }
+        else {
+            core.setOutput('shared_link', '');
+        }
         return;
     }
     // ---------- Large files: upload-session strategy --------------------------
     let offset = 0;
     let sessionId = "";
     try {
+        let chunk = Buffer.allocUnsafe(CHUNK_SIZE);
         // -- 1) Start session with first 100 MiB block ---------------------------
-        const first = Math.min(CHUNK_SIZE, totalBytes);
-        const firstChunk = Buffer.allocUnsafe(first);
-        await fh.read(firstChunk, 0, first, offset);
+        await fh.read(chunk, 0, CHUNK_SIZE, offset);
         const { result } = await dbx.filesUploadSessionStart({
             close: false,
-            contents: firstChunk,
+            contents: chunk,
         });
         sessionId = result.session_id;
-        offset += first;
+        offset += CHUNK_SIZE;
         onProgress?.(offset, totalBytes);
         // -- 2) Append every full 100 MiB block (each multiple of 4 MiB) ---------
         while (totalBytes - offset > CHUNK_SIZE) {
-            const buf = Buffer.allocUnsafe(CHUNK_SIZE);
-            await fh.read(buf, 0, CHUNK_SIZE, offset);
+            await fh.read(chunk, 0, CHUNK_SIZE, offset);
             await dbx.filesUploadSessionAppendV2({
                 cursor: { session_id: sessionId, offset },
                 close: false,
-                contents: buf,
+                contents: chunk,
             });
             offset += CHUNK_SIZE;
             onProgress?.(offset, totalBytes);
         }
         // -- 3) Finish with the remaining bytes (< 100 MiB, any length) ----------
         const remaining = totalBytes - offset;
-        const lastChunk = Buffer.allocUnsafe(remaining);
-        await fh.read(lastChunk, 0, remaining, offset);
+        await fh.read(chunk, 0, remaining, offset);
         const finishRes = await dbx.filesUploadSessionFinish({
             cursor: { session_id: sessionId, offset },
             commit: {
                 path: dropboxPath,
-                mode: { ".tag": "add" },
-                autorename: true,
-                mute: false,
+                mode: getMode(options.mode),
+                autorename: options.autorename,
+                mute: options.mute,
                 strict_conflict: false,
             },
-            contents: lastChunk,
+            contents: chunk,
         });
         onProgress?.(totalBytes, totalBytes);
+        if (options.sharedLink) {
+            const { result } = await dbx.sharingCreateSharedLinkWithSettings({
+                path: dropboxPath,
+                settings: {
+                    requested_visibility: {
+                        '.tag': 'public',
+                    },
+                },
+            });
+            core.setOutput('shared_link', result.url);
+        }
+        else {
+            core.setOutput('shared_link', '');
+        }
         return;
     }
     finally {
