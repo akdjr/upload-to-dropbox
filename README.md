@@ -43,7 +43,7 @@ curl https://api.dropbox.com/oauth2/token \
 ### Upload a file
 
 ```yaml
-- uses: akdjr/upload-to-dropbox@v4
+- uses: akdjr/upload-to-dropbox@v6
   with:
     dropbox_refresh_token: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     dropbox_client_id: ${{ secrets.DROPBOX_APP_KEY }}
@@ -55,7 +55,7 @@ curl https://api.dropbox.com/oauth2/token \
 ### Upload a file with overwrite mode
 
 ```yaml
-- uses: akdjr/upload-to-dropbox@v4
+- uses: akdjr/upload-to-dropbox@v6
   with:
     dropbox_refresh_token: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     dropbox_client_id: ${{ secrets.DROPBOX_APP_KEY }}
@@ -68,7 +68,7 @@ curl https://api.dropbox.com/oauth2/token \
 ### Upload a file with specified name
 
 ```yaml
-- uses: akdjr/upload-to-dropbox@v4
+- uses: akdjr/upload-to-dropbox@v6
   with:
     dropbox_refresh_token: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     dropbox_client_id: ${{ secrets.DROPBOX_APP_KEY }}
@@ -80,7 +80,7 @@ curl https://api.dropbox.com/oauth2/token \
 ### Upload multiple files
 
 ```yaml
-- uses: akdjr/upload-to-dropbox@v4
+- uses: akdjr/upload-to-dropbox@v6
   with:
     dropbox_refresh_token: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     dropbox_client_id: ${{ secrets.DROPBOX_APP_KEY }}
@@ -93,7 +93,7 @@ curl https://api.dropbox.com/oauth2/token \
 ### Upload a file Using root namespace when working with Dropbox Teams
 
 ```yaml
-- uses: akdjr/upload-to-dropbox@v4
+- uses: akdjr/upload-to-dropbox@v6
   with:
     dropbox_refresh_token: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     dropbox_client_id: ${{ secrets.DROPBOX_APP_KEY }}
@@ -106,7 +106,7 @@ curl https://api.dropbox.com/oauth2/token \
 ### Upload a file with a public shared link
 
 ```yaml
-- uses: akdjr/upload-to-dropbox@v4
+- uses: akdjr/upload-to-dropbox@v6
   with:
     dropbox_refresh_token: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     dropbox_client_id: ${{ secrets.DROPBOX_APP_KEY }}
