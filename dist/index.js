@@ -225,9 +225,10 @@ async function uploadLargeFile(dbx, localPath, dropboxPath, options, onProgress)
             const { result } = await dbx.sharingCreateSharedLinkWithSettings({
                 path: dropboxPath,
                 settings: {
-                    requested_visibility: {
+                    audience: {
                         '.tag': 'public',
                     },
+                    allow_download: true,
                 },
             });
             core.setOutput('shared_link', result.url);
@@ -281,9 +282,10 @@ async function uploadLargeFile(dbx, localPath, dropboxPath, options, onProgress)
             const { result } = await dbx.sharingCreateSharedLinkWithSettings({
                 path: dropboxPath,
                 settings: {
-                    requested_visibility: {
+                    audience: {
                         '.tag': 'public',
                     },
+                    allow_download: true,
                 },
             });
             core.setOutput('shared_link', result.url);
